@@ -1,5 +1,5 @@
 [workspace]
-members = ["client", "power", "services"]
+members = ["client", "power", "services", "utils"]
 default-members = ["services","client"]
 resolver = "2"
 
