@@ -14,3 +14,4 @@ homepage.workspace = true
 [dependencies]
 zbus = { version = "4.1.2", features = ["tokio"] }
 mecha_display_ctl = "0.1.0"
+utils ={ path = "../utils"}
