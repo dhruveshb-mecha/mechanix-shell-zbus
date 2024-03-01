@@ -1,23 +1,19 @@
 use mecha_battery_ctl::{Battery, BatteryControl, PowerSupplyInfo};
+use utils::parse_yaml;
 use zbus::interface;
 
 pub struct PowerBusInterface {}
 
 #[interface(name = "Mechanix.Services.Power")]
 impl PowerBusInterface {
-    /*
-    Mechanix.Services.Power.GetBatteryStatus
-    Mechanix.Services.Power.GetBatteryInfo
-    Mechanix.Services.Power.GetPowerUsage
-    Mechanix.Services.Power.SetCPUGovernor
-    Mechanix.Services.Power.GetCPUGovernorInfo
-    */
-
     pub async fn get_battery_status(&self) -> String {
+        //get battery path
+        let battery_path = parse_yaml().unwrap().interfaces.battery.device;
+
         //get battery instance
         let battery = Battery {
-            path: "/sys/class/power_supply/BAT0".to_string(),
-            currnet_now: "/sys/class/power_supply/BAT0/current_now".to_string(),
+            path: format!("{}/uevent", battery_path),
+            currnet_now: format!("{}/current_now", battery_path),
         };
 
         //moke PowerSupplyInfo object
@@ -45,5 +41,45 @@ impl PowerBusInterface {
         };
 
         result.status
+    }
+
+    //get battery percentage
+    pub async fn get_battery_info(&self) -> u8 {
+        //get battery path
+        let battery_path = parse_yaml().unwrap().interfaces.battery.device;
+
+        //get battery instance
+        let battery = Battery {
+            path: format!("{}/uevent", battery_path),
+            currnet_now: format!("{}/current_now", battery_path),
+        };
+
+        //get battery percentage if  there is an error return  by default the sdk returns () we need to return a u8
+        let result: u8 = match battery.info() {
+            Ok(battery_info) => battery_info.capacity,
+            Err(_) => 45,
+        };
+
+        result
+    }
+
+    //get power usage
+    pub async fn get_power_usage(&self) -> i32 {
+        //get battery path
+        let battery_path = parse_yaml().unwrap().interfaces.battery.device;
+
+        //get battery instance
+        let battery = Battery {
+            path: format!("{}/uevent", battery_path),
+            currnet_now: format!("{}/current_now", battery_path),
+        };
+
+        //get power usage if  there is an error return  by default the sdk returns () we need to return a u8
+        let result: i32 = match battery.info() {
+            Ok(battery_info) => battery_info.current_now,
+            Err(_) => 45,
+        };
+
+        result
     }
 }
