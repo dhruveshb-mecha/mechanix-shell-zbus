@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use mecha_battery_ctl::{Battery, BatteryControl, PowerSupplyInfo};
 use utils::parse_yaml;
 use zbus::interface;
@@ -81,5 +83,44 @@ impl PowerBusInterface {
         };
 
         result
+    }
+
+    // get cpu governor
+    pub async fn get_cpu_governor(&self) -> String {
+        //get cpu path
+        let cpu_path = parse_yaml().unwrap().interfaces.cpu.device;
+
+        //command to get governor
+        let output = Command::new("cat")
+            .arg(format!("{}/cpufreq/scaling_governor", cpu_path))
+            .output()
+            .expect("Failed to execute cat command");
+
+        let governor = String::from_utf8_lossy(&output.stdout).to_string();
+
+        governor
+    }
+
+    // set cpu governor
+    pub async fn set_cpu_governor(&self, governor: &str) -> String {
+        //get cpu path
+        let cpu_path = parse_yaml().unwrap().interfaces.cpu.device;
+
+        //check if the governor is valid and set it
+        if governor == "performance" || governor == "powersave" || governor == "ondemand" {
+            let result = Command::new("echo")
+                .arg(governor)
+                .arg(format!("{}/cpufreq/scaling_governor", cpu_path))
+                .output()
+                .expect("Failed to execute echo command");
+
+            if result.status.success() {
+                return "Governor set successfully".to_string();
+            } else {
+                return "Failed to set governor".to_string();
+            }
+        } else {
+            return "Invalid governor value".to_string();
+        }
     }
 }
