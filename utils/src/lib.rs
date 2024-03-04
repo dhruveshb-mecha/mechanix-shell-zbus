@@ -38,7 +38,7 @@ pub struct Cpu {
 //write a function to parse the yaml file
 pub fn parse_yaml() -> Result<BaseConfig, Box<dyn std::error::Error>> {
     //read the yaml file
-    let mut file = File::open("./Confing.yml").expect("Failed to open file");
+    let mut file = File::open("./Config.yml").expect("Failed to open file");
     let mut contents = String::new();
     file.read_to_string(&mut contents).expect("Failed to read file");
 

@@ -1,0 +1,11 @@
+name: mecha-compute-g1
+interfaces:
+  display:
+    device: /sys/class/backlight/backlight/brightness
+  battery:
+    device: /sys/class/power_supply/bq27441-0/uevent
+  network:
+    device: /var/run/wpa_supplicant/wlp2s0
+  cpu:
+    device: /sys/devices/system/cpu/cpu0/
+
