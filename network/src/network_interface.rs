@@ -40,7 +40,6 @@ impl NetworkBusInterface {
         //get wireless network path
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
 
-        println!("{:?}", wireless_network_path);
 
         //get wireless network instance
         let network_module = WirelessNetworkControl::new(&wireless_network_path);
@@ -111,7 +110,7 @@ impl NetworkBusInterface {
         //get wireless network path
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
 
-        println!("{:?}", wireless_network_path);
+
 
         //get wireless network instance
         let network_module = WirelessNetworkControl::new(&wireless_network_path);
