@@ -11,6 +11,8 @@ pub struct BaseConfig {
 pub struct Interfaces {
     pub display: Display,
     pub battery: Battery,
+    pub network: Network,
+    pub cpu: Cpu,
 }
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Display {
@@ -19,6 +21,16 @@ pub struct Display {
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Battery {
+    pub device: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct Network {
+    pub device: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct Cpu {
     pub device: String,
 }
 
