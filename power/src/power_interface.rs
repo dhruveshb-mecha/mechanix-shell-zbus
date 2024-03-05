@@ -12,9 +12,9 @@ use crate::handle_power_supply_error;
 pub struct PowerBusInterface {}
 
 #[derive(DeserializeDict, SerializeDict, Type)]
-// `Type` treats `BatteryStatusZbus` is an alias for `a{sv}`.
+// `Type` treats `BatteryStatusResponse` is an alias for `a{sv}`.
 #[zvariant(signature = "a{sv}")]
-pub struct BatteryStatusZbus {
+pub struct BatteryStatusResponse {
     pub name: String,
     pub r#type: String,
     pub status: String,
@@ -33,7 +33,7 @@ pub struct BatteryStatusZbus {
 
 #[interface(name = "Mechanix.Services.Power")]
 impl PowerBusInterface {
-    pub async fn get_battery_status(&self) -> Result<BatteryStatusZbus, zbus::fdo::Error> {
+    pub async fn get_battery_status(&self) -> Result<BatteryStatusResponse, zbus::fdo::Error> {
         //get battery path
         let battery_path = parse_yaml().unwrap().interfaces.battery.device;
 
@@ -51,7 +51,7 @@ impl PowerBusInterface {
             }
         };
 
-        Ok((BatteryStatusZbus {
+        Ok((BatteryStatusResponse {
             name: result.name,
             r#type: result.r#type,
             status: result.status,

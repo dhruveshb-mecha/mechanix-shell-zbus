@@ -5,10 +5,10 @@ use anyhow::Error;
 pub fn handle_display_error(e: Error) -> DBusError {
     if let Some(custom_error) = e.downcast_ref::<DisplayError>() {
         match custom_error.code {
-            DisplayErrorCodes::InvalidBrightnessValueError => DBusError::Failed("Invalid brightness value".to_string()),
-            DisplayErrorCodes::InvalidBrightnessPathError => DBusError::IOError("Invalid brightness path".to_string()),
+            DisplayErrorCodes::InvalidBrightnessValueError => DBusError::Failed("InvalidBrightnessValueError".to_string()),
+            DisplayErrorCodes::InvalidBrightnessPathError => DBusError::IOError("InvalidBrightnessPathError".to_string()),
         }
     } else {
-        DBusError::Failed("Unknown error".to_string())
+        DBusError::Failed("Unknown".to_string())
     }
 }

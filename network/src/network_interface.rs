@@ -12,9 +12,9 @@ use crate::handle_network_error;
 pub struct NetworkBusInterface {}
 
 #[derive(DeserializeDict, SerializeDict, Type)]
-// `Type` treats `ScanResultZbus` is an alias for `a{sv}`.
+// `Type` treats `ScanResultResponse` is an alias for `a{sv}`.
 #[zvariant(signature = "a{sv}")]
-pub struct ScanResultZbus {
+pub struct ScanResultResponse {
     pub name: String,
     pub signal: i32,
     pub frequency: String,
@@ -23,25 +23,25 @@ pub struct ScanResultZbus {
 }
 
 #[derive(DeserializeDict, SerializeDict, Type)]
-// `Type` treats `ScanWirelessNetworkZbus` is an alias for `a{sv}`.
+// `Type` treats `ScanWirelessNetworkResponse` is an alias for `a{sv}`.
 #[zvariant(signature = "a{sv}")]
-pub struct ScanWirelessNetworkZbus {
+pub struct ScanWirelessNetworkResponse {
     pub name: String,
     pub signal: i32,
     pub frequency: String,
     pub mac: String,
     pub flags: String,
 }
-//Vector of ScanWirelessNetworkZbus
+//Vector of ScanWirelessNetworkListResponse
 #[derive(DeserializeDict, SerializeDict, Type)]
 #[zvariant(signature = "a{sv}")]
-pub struct ScanWirelessNetworkListZbus {
-    pub networks: Vec<ScanWirelessNetworkZbus>,
+pub struct ScanWirelessNetworkListResponse {
+    pub networks: Vec<ScanWirelessNetworkResponse>,
 }
 
 #[derive(DeserializeDict, SerializeDict, Type)]
 #[zvariant(signature = "a{sv}")]
-pub struct NetworkResultZbus {
+pub struct NetworkResultResponse {
     pub network_id: u32,
     pub ssid: String,
     pub flags: String,
@@ -49,8 +49,8 @@ pub struct NetworkResultZbus {
 
 #[derive(DeserializeDict, SerializeDict, Type)]
 #[zvariant(signature = "a{sv}")]
-pub struct NetworkListZbus {
-    pub networks: Vec<NetworkResultZbus>,
+pub struct NetworkListResponse {
+    pub networks: Vec<NetworkResultResponse>,
 }
 
 #[interface(name = "Mechanix.Services.Network")]
@@ -80,7 +80,7 @@ impl NetworkBusInterface {
     }
 
     //get wireless interface info
-    pub async fn get_wireless_interface_info(&self) -> Result<ScanResultZbus, zbus::fdo::Error> {
+    pub async fn get_wireless_interface_info(&self) -> Result<ScanResultResponse, zbus::fdo::Error> {
         //get wireless network path
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
 
@@ -94,7 +94,7 @@ impl NetworkBusInterface {
                 return Err(handle_network_error(e));
             }
         };
-        Ok(ScanResultZbus {
+        Ok(ScanResultResponse {
             name: result.name,
             signal: result.signal as i32,
             frequency: result.frequency,
@@ -159,7 +159,7 @@ impl NetworkBusInterface {
 
     pub async fn scan_wireless_networks(
         &self,
-    ) -> Result<ScanWirelessNetworkListZbus, zbus::fdo::Error> {
+    ) -> Result<ScanWirelessNetworkListResponse, zbus::fdo::Error> {
         //get wireless network path
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
 
@@ -174,17 +174,17 @@ impl NetworkBusInterface {
             }
         };
 
-        Ok(ScanWirelessNetworkListZbus {
+        Ok(ScanWirelessNetworkListResponse {
             networks: result
                 .iter()
-                .map(|network| ScanWirelessNetworkZbus {
+                .map(|network| ScanWirelessNetworkResponse {
                     name: network.name.clone(),
                     signal: network.signal as i32,
                     frequency: network.frequency.clone(),
                     mac: network.mac.clone(),
                     flags: network.flags.clone(),
                 })
-                .collect::<Vec<ScanWirelessNetworkZbus>>(),
+                .collect::<Vec<ScanWirelessNetworkResponse>>(),
         })
     }
 
@@ -241,7 +241,7 @@ impl NetworkBusInterface {
         status
     }
 
-    pub async fn get_wireless_networks(&self) -> Result<NetworkListZbus, zbus::fdo::Error> {
+    pub async fn get_wireless_networks(&self) -> Result<NetworkListResponse, zbus::fdo::Error> {
         //get wireless network path
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
 
@@ -256,15 +256,15 @@ impl NetworkBusInterface {
                 }
             };
 
-        Ok(NetworkListZbus {
+        Ok(NetworkListResponse {
             networks: result
                 .iter()
-                .map(|network| NetworkResultZbus {
+                .map(|network| NetworkResultResponse {
                     network_id: network.network_id as u32,
                     ssid: network.ssid.clone(),
                     flags: network.flags.clone(),
                 })
-                .collect::<Vec<NetworkResultZbus>>(),
+                .collect::<Vec<NetworkResultResponse>>(),
         })
     }
 }
