@@ -1,12 +1,57 @@
 use std::process::Command;
-
 use utils::parse_yaml;
 
-use zbus::interface;
+use zbus::{
+    interface,
+    zvariant::{DeserializeDict, SerializeDict, Type},
+};
 
 pub use mecha_network_ctl::wireless_network::WirelessNetworkControl;
 
+use crate::handle_network_error;
 pub struct NetworkBusInterface {}
+
+#[derive(DeserializeDict, SerializeDict, Type)]
+// `Type` treats `ScanResultZbus` is an alias for `a{sv}`.
+#[zvariant(signature = "a{sv}")]
+pub struct ScanResultZbus {
+    pub name: String,
+    pub signal: i32,
+    pub frequency: String,
+    pub mac: String,
+    pub flags: String,
+}
+
+#[derive(DeserializeDict, SerializeDict, Type)]
+// `Type` treats `ScanWirelessNetworkZbus` is an alias for `a{sv}`.
+#[zvariant(signature = "a{sv}")]
+pub struct ScanWirelessNetworkZbus {
+    pub name: String,
+    pub signal: i32,
+    pub frequency: String,
+    pub mac: String,
+    pub flags: String,
+}
+//Vector of ScanWirelessNetworkZbus
+#[derive(DeserializeDict, SerializeDict, Type)]
+#[zvariant(signature = "a{sv}")]
+pub struct ScanWirelessNetworkListZbus {
+    pub networks: Vec<ScanWirelessNetworkZbus>,
+}
+
+#[derive(DeserializeDict, SerializeDict, Type)]
+#[zvariant(signature = "a{sv}")]
+pub struct NetworkResultZbus {
+    pub network_id: u32,
+    pub ssid: String,
+    pub flags: String,
+}
+
+#[derive(DeserializeDict, SerializeDict, Type)]
+#[zvariant(signature = "a{sv}")]
+pub struct NetworkListZbus {
+    pub networks: Vec<NetworkResultZbus>,
+}
 
 #[interface(name = "Mechanix.Services.Network")]
 impl NetworkBusInterface {
@@ -31,58 +76,58 @@ impl NetworkBusInterface {
         } else {
             status = false;
         }
-
         status
     }
 
     //get wireless interface info
-    pub async fn get_wireless_interface_info(&self) -> (String, i32, String, String, String) {
+    pub async fn get_wireless_interface_info(&self) -> Result<ScanResultZbus, zbus::fdo::Error> {
         //get wireless network path
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
-
 
         //get wireless network instance
         let network_module = WirelessNetworkControl::new(&wireless_network_path);
 
-        //get wireless interface info
+        // get wireless interface info
         let result = match network_module.current_wireless_network().await {
-            Ok(info) => info,
+            Ok(result) => result,
             Err(e) => {
-                eprintln!("Error: {}", e);
-                //return dummy info
-                wifi_ctrl::sta::ScanResult {
-                    name: "Network 1".to_string(),
-                    signal: 1,
-                    frequency: "2.4".to_string(),
-                    mac: "00:00:00:00:00:00".to_string(),
-                    flags: "WPA2-PSK".to_string(),
-                }
+                return Err(handle_network_error(e));
             }
         };
-
-        (result.name, result.signal as i32, result.frequency, result.mac, result.flags)
-
+        Ok(ScanResultZbus {
+            name: result.name,
+            signal: result.signal as i32,
+            frequency: result.frequency,
+            mac: result.mac,
+            flags: result.flags,
+        })
     }
 
-    pub async fn disable_wireless_interface(&self) -> bool {
+    pub async fn disable_wireless_interface(&self) -> Result<bool, zbus::fdo::Error> {
         //get wireless network path
 
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
 
         //extract the interface name from the path
         let interface_name = wireless_network_path.split('/').last().unwrap();
-        //disable wireless interface
 
+        //disable wireless interface
         let output = Command::new("ifconfig")
             .arg(interface_name)
             .arg("down")
             .output()
             .expect("Failed to execute ifconfig command");
 
-        output.status.success()
+        if output.status.success() {
+            Ok(true)
+        } else {
+            Err(zbus::fdo::Error::Failed(
+                "Failed to disable wireless interface".to_string(),
+            ))
+        }
     }
 
-    pub async fn enable_wireless_interface(&self) -> bool {
+    pub async fn enable_wireless_interface(&self) -> Result<bool, zbus::fdo::Error> {
         //get wireless network path
 
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
@@ -97,7 +142,13 @@ impl NetworkBusInterface {
             .output()
             .expect("Failed to execute ifconfig command");
 
-        output.status.success()
+        if output.status.success() {
+            Ok(true)
+        } else {
+            Err(zbus::fdo::Error::Failed(
+                "Failed to disable wireless interface".to_string(),
+            ))
+        }
     }
 
     // todo: implement connect_to_wireless_network will be same as add network method but works only for known networks
@@ -106,11 +157,11 @@ impl NetworkBusInterface {
 
     // }
 
-    pub async fn scan_wireless_networks(&self) -> Vec<(String, i32, String)> {
+    pub async fn scan_wireless_networks(
+        &self,
+    ) -> Result<ScanWirelessNetworkListZbus, zbus::fdo::Error> {
         //get wireless network path
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
-
-
 
         //get wireless network instance
         let network_module = WirelessNetworkControl::new(&wireless_network_path);
@@ -119,40 +170,29 @@ impl NetworkBusInterface {
         let result = match network_module.scan_wireless_network().await {
             Ok(scan_results) => scan_results,
             Err(e) => {
-                eprintln!("Error: {}", e);
-                //return vector of  dummy scan results
-                vec![
-                    wifi_ctrl::sta::ScanResult {
-                        name: "Network 1".to_string(),
-                        signal: 1,
-                        frequency: "2.4".to_string(),
-                        mac: "00:00:00:00:00:00".to_string(),
-                        flags: "WPA2-PSK".to_string(),
-                    },
-                    wifi_ctrl::sta::ScanResult {
-                        name: "Network 2".to_string(),
-                        signal: 2,
-                        frequency: "5.0".to_string(),
-                        mac: "00:00:00:00:00:00".to_string(),
-                        flags: "WPA2-PSK".to_string(),
-                    },
-                ]
+                return Err(handle_network_error(e));
             }
         };
 
-        result
-            .iter()
-            .map(|network| {
-                (
-                    network.name.clone(),
-                    network.signal as i32,
-                    network.frequency.clone(),
-                )
-            })
-            .collect::<Vec<(String, i32, String)>>()
+        Ok(ScanWirelessNetworkListZbus {
+            networks: result
+                .iter()
+                .map(|network| ScanWirelessNetworkZbus {
+                    name: network.name.clone(),
+                    signal: network.signal as i32,
+                    frequency: network.frequency.clone(),
+                    mac: network.mac.clone(),
+                    flags: network.flags.clone(),
+                })
+                .collect::<Vec<ScanWirelessNetworkZbus>>(),
+        })
     }
 
-    pub async fn add_wireless_network(&self, ssid: String, psk: String) -> bool {
+    pub async fn add_wireless_network(
+        &self,
+        ssid: String,
+        psk: String,
+    ) -> Result<bool, zbus::fdo::Error> {
         //get wireless network path
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
 
@@ -166,15 +206,14 @@ impl NetworkBusInterface {
         {
             Ok(_) => true,
             Err(e) => {
-                eprintln!("Error: {}", e);
-                false
+                return Err(handle_network_error(e));
             }
         };
 
-        result
+        Ok(result)
     }
 
-    pub async fn remove_wireless_network(&self, network_id: u32) -> bool {
+    pub async fn remove_wireless_network(&self, network_id: u32) -> Result<bool, zbus::fdo::Error> {
         //get wireless network path
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
 
@@ -188,12 +227,11 @@ impl NetworkBusInterface {
         {
             Ok(_) => true,
             Err(e) => {
-                eprintln!("Error: {}", e);
-                false
+                return Err(handle_network_error(e));
             }
         };
 
-        result
+        Ok(result)
     }
 
     //todo: implement update_wireless_network
@@ -203,7 +241,7 @@ impl NetworkBusInterface {
         status
     }
 
-    pub async fn get_wireless_networks(&self) -> Vec<(u32, String, String)> {
+    pub async fn get_wireless_networks(&self) -> Result<NetworkListZbus, zbus::fdo::Error> {
         //get wireless network path
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
 
@@ -214,32 +252,19 @@ impl NetworkBusInterface {
             {
                 Ok(networks) => networks,
                 Err(e) => {
-                    eprintln!("Error: {}", e);
-                    //return vector of  dummy scan results
-                    vec![
-                        wifi_ctrl::sta::NetworkResult {
-                            network_id: 1,
-                            ssid: "Network 1".to_string(),
-                            flags: "2.5 ghz".to_string(),
-                        },
-                        wifi_ctrl::sta::NetworkResult {
-                            network_id: 1,
-                            ssid: "Network 2".to_string(),
-                            flags: "2.5 ghz".to_string(),
-                        },
-                    ]
+                    return Err(handle_network_error(e));
                 }
             };
 
-        result
-            .iter()
-            .map(|network| {
-                (
-                    network.network_id as u32,
-                    network.ssid.clone(),
-                    network.flags.clone(),
-                )
-            })
-            .collect::<Vec<(u32, String, String)>>()
+        Ok(NetworkListZbus {
+            networks: result
+                .iter()
+                .map(|network| NetworkResultZbus {
+                    network_id: network.network_id as u32,
+                    ssid: network.ssid.clone(),
+                    flags: network.flags.clone(),
+                })
+                .collect::<Vec<NetworkResultZbus>>(),
+        })
     }
 }
