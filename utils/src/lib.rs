@@ -17,21 +17,25 @@ pub struct Interfaces {
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Display {
     pub device: String,
+    pub error: Option<bool>
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Battery {
     pub device: String,
+    pub error: Option<bool>
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Network {
     pub device: String,
+    pub error: Option<bool>
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Cpu {
     pub device: String,
+    pub error: Option<bool>
 }
 
 
