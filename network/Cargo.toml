@@ -17,3 +17,7 @@ zbus = { version = "4.1.2", features = ["tokio"] }
 utils ={ path = "../utils"}
 wifi-ctrl = "0.2.4"
 anyhow = "1.0.80"
+
+[features]
+default = ["mock"]
+mock = []

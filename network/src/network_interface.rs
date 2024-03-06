@@ -52,7 +52,7 @@ pub struct NetworkResultResponse {
 pub struct NetworkListResponse {
     pub networks: Vec<NetworkResultResponse>,
 }
-
+#[cfg(not(feature = "mock"))]
 #[interface(name = "Mechanix.Services.Network")]
 impl NetworkBusInterface {
     pub async fn get_wireless_interface_status(&self) -> bool {
@@ -80,7 +80,9 @@ impl NetworkBusInterface {
     }
 
     //get wireless interface info
-    pub async fn get_wireless_interface_info(&self) -> Result<ScanResultResponse, zbus::fdo::Error> {
+    pub async fn get_wireless_interface_info(
+        &self,
+    ) -> Result<ScanResultResponse, zbus::fdo::Error> {
         //get wireless network path
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
 
@@ -258,6 +260,263 @@ impl NetworkBusInterface {
 
         Ok(NetworkListResponse {
             networks: result
+                .iter()
+                .map(|network| NetworkResultResponse {
+                    network_id: network.network_id as u32,
+                    ssid: network.ssid.clone(),
+                    flags: network.flags.clone(),
+                })
+                .collect::<Vec<NetworkResultResponse>>(),
+        })
+    }
+}
+
+#[cfg(feature = "mock")]
+#[interface(name = "Mechanix.Services.Network")]
+impl NetworkBusInterface {
+    pub async fn get_wireless_interface_status(&self) -> Result<bool, zbus::fdo::Error> {
+        //get wireless network path
+        let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
+
+        //get wireless interface from the path
+        let interface_name = wireless_network_path.split('/').last().unwrap();
+
+        //get wireless interface status
+        let output = Command::new("ifconfig")
+            .output()
+            .expect("Failed to execute ifconfig command");
+
+        let stdout = String::from_utf8(output.stdout).expect("Failed to convert stdout to string");
+
+        let status: bool;
+        // Check if the stdout contains interface_name
+        if stdout.contains(interface_name) {
+            status = true;
+        } else {
+            status = false;
+        }
+
+        Ok(status)
+    }
+
+    //get wireless interface info
+    pub async fn get_wireless_interface_info(
+        &self,
+    ) -> Result<ScanResultResponse, zbus::fdo::Error> {
+        //mock ScanResultResponse
+        let scan_response_result = ScanResultResponse {
+            name: "Mecha_Network".to_string(),
+            signal: 100,
+            frequency: "2.4GHz".to_string(),
+            mac: "00:00:00:00:00:00".to_string(),
+            flags: "WPA2".to_string(),
+        };
+
+        if let Some(true) = parse_yaml().unwrap().interfaces.network.error {
+            return Err(zbus::fdo::Error::Failed(
+                "NoWirelessNetworkFound".to_string(),
+            ));
+        }
+
+        Ok(scan_response_result)
+    }
+
+    pub async fn disable_wireless_interface(&self) -> Result<bool, zbus::fdo::Error> {
+        //get wireless network path
+        let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
+
+        //extract the interface name from the path
+        let interface_name = wireless_network_path.split('/').last().unwrap();
+
+        //disable wireless interface
+        let output = Command::new("ifconfig")
+            .arg(interface_name)
+            .arg("down")
+            .output()
+            .expect("Failed to execute ifconfig command");
+
+        if output.status.success() {
+            Ok(true)
+        } else {
+            //check for error flag from config
+            if let Some(true) = parse_yaml().unwrap().interfaces.network.error {
+                return Err(zbus::fdo::Error::Failed(
+                    "UnableToTurnOffWirelessNetwork".to_string(),
+                ));
+            }
+            return Ok(true);
+        }
+    }
+
+    pub async fn enable_wireless_interface(&self) -> Result<bool, zbus::fdo::Error> {
+        //get wireless network path
+
+        let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
+
+        //extract the interface name from the path
+        let interface_name = wireless_network_path.split('/').last().unwrap();
+        //disable wireless interface
+
+        let output = Command::new("ifconfig")
+            .arg(interface_name)
+            .arg("up")
+            .output()
+            .expect("Failed to execute ifconfig command");
+
+        if output.status.success() {
+            Ok(true)
+        } else {
+            //check for error flag from config
+            if let Some(true) = parse_yaml().unwrap().interfaces.network.error {
+                return Err(zbus::fdo::Error::Failed(
+                    "UnableToTurnOnWirelessNetwork".to_string(),
+                ));
+            }
+            return Ok(true);
+        }
+    }
+
+    // todo: implement connect_to_wireless_network will be same as add network method but works only for known networks
+    // pub async fn connect_to_wireless_network(&self,network_id: u32) -> bool {
+    //     //connect to wireless network
+
+    // }
+
+    pub async fn scan_wireless_networks(
+        &self,
+    ) -> Result<ScanWirelessNetworkListResponse, zbus::fdo::Error> {
+        //mock Vec of ScanResult
+        let scan_results = vec![
+            ScanResultResponse {
+                name: "Mecha_Network".to_string(),
+                signal: 100,
+                frequency: "2.4GHz".to_string(),
+                mac: "00:00:00:00:00:00".to_string(),
+                flags: "WPA2".to_string(),
+            },
+            ScanResultResponse {
+                name: "Mecha_Network_2".to_string(),
+                signal: 70,
+                frequency: "5.0GHz".to_string(),
+                mac: "00:00:00:00:00:00".to_string(),
+                flags: "WPA2".to_string(),
+            },
+        ];
+
+        //if error flag is true then return error
+        if let Some(true) = parse_yaml().unwrap().interfaces.network.error {
+            return Err(zbus::fdo::Error::Failed(
+                "NoWirelessNetworkFound".to_string(),
+            ));
+        }
+
+        Ok(ScanWirelessNetworkListResponse {
+            networks: scan_results
+                .iter()
+                .map(|network| ScanWirelessNetworkResponse {
+                    name: network.name.clone(),
+                    signal: network.signal as i32,
+                    frequency: network.frequency.clone(),
+                    mac: network.mac.clone(),
+                    flags: network.flags.clone(),
+                })
+                .collect::<Vec<ScanWirelessNetworkResponse>>(),
+        })
+    }
+
+    pub async fn add_wireless_network(
+        &self,
+        ssid: String,
+        psk: String,
+    ) -> Result<bool, zbus::fdo::Error> {
+        //get wireless network path
+        let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
+
+        //call connect_wireless_network method if successful return true else return false
+        let result = match WirelessNetworkControl::connect_wireless_network(
+            &wireless_network_path,
+            &ssid,
+            &psk,
+        )
+        .await
+        {
+            Ok(_) => true,
+            Err(_e) => {
+                //check for error flag from config
+                if let Some(true) = parse_yaml().unwrap().interfaces.network.error {
+                    return Err(zbus::fdo::Error::Failed(
+                        "UnableToAddWirelessNetwork".to_string(),
+                    ));
+                }
+                return Ok(true);
+            }
+        };
+
+        Ok(result)
+    }
+
+    pub async fn remove_wireless_network(&self, network_id: u32) -> Result<bool, zbus::fdo::Error> {
+        //get wireless network path
+        let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
+
+        //call remove_wireless_network method if successful return true else return false
+
+        let result = match WirelessNetworkControl::remove_wireless_network(
+            &wireless_network_path,
+            network_id as usize,
+        )
+        .await
+        {
+            Ok(_) => true,
+            Err(_e) => {
+                if let Some(true) = parse_yaml().unwrap().interfaces.network.error {
+                    return Err(zbus::fdo::Error::Failed(
+                        "UnableToRemoveWirelessNetwork".to_string(),
+                    ));
+                }
+                return Ok(false);
+            }
+        };
+
+        Ok(result)
+    }
+
+    //todo: implement update_wireless_network
+    pub async fn update_wireless_network(&self) -> String {
+        //update wireless network
+        let status = "updated".to_string();
+        status
+    }
+
+    pub async fn get_wireless_networks(&self) -> Result<NetworkListResponse, zbus::fdo::Error> {
+        //moke Vec! NetworkResult
+        let network_result = vec![
+            NetworkResultResponse {
+                network_id: 1,
+                ssid: "Mecha_Network".to_string(),
+                flags: "WPA2/PSK".to_string(),
+            },
+            NetworkResultResponse {
+                network_id: 2,
+                ssid: "Mecha_Network_2".to_string(),
+                flags: "WPA".to_string(),
+            },
+            NetworkResultResponse {
+                network_id: 3,
+                ssid: "Mecha_Network_3".to_string(),
+                flags: "WPA2".to_string(),
+            },
+        ];
+
+        //if error flag is true then return error
+        if let Some(true) = parse_yaml().unwrap().interfaces.network.error {
+            return Err(zbus::fdo::Error::Failed(
+                "UnableToGetWirelessNetwork".to_string(),
+            ));
+        }
+
+        Ok(NetworkListResponse {
+            networks: network_result
                 .iter()
                 .map(|network| NetworkResultResponse {
                     network_id: network.network_id as u32,
