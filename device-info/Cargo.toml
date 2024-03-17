@@ -1,5 +1,5 @@
 [package]
-name = "services"
+name = "device-info"
 version.workspace = true
 authors.workspace = true
 documentation.workspace = true
@@ -12,11 +12,7 @@ homepage.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.80"
-tokio = { version = "1.36.0", features = ["full"] }
-display = { path = "../display" }
-power = { path = "../power" }
-network = { path = "../network" }
-bluetooth = { path = "../bluetooth" }
-device-info = { path = "../device-info" }
+mecha_device_oem_info = "0.1.1"
 zbus = { version = "4.1.2", features = ["tokio"] }
+utils ={ path = "../utils"}
+anyhow = "1.0.80"
