@@ -4,7 +4,9 @@ use utils::parse_yaml;
 use zbus::{
     interface,
     zvariant::{DeserializeDict, SerializeDict, Type},
+    Connection,
 };
+use zbus_polkit::policykit1::*;
 
 pub use mecha_network_ctl::wireless_network::WirelessNetworkControl;
 
@@ -165,29 +167,36 @@ impl NetworkBusInterface {
         //get wireless network path
         let wireless_network_path = parse_yaml().unwrap().interfaces.network.device;
 
-        //get wireless network instance
-        let network_module = WirelessNetworkControl::new(&wireless_network_path);
+        //if authorized scan wireless networks
+        if authorized().await.unwrap() {
+            //get wireless network instance
+            println!("Wireless network path: {}", wireless_network_path);
+            let network_module = WirelessNetworkControl::new(&wireless_network_path);
 
-        //scan wireless networks
-        let result = match network_module.scan_wireless_network().await {
-            Ok(scan_results) => scan_results,
-            Err(e) => {
-                return Err(handle_network_error(e));
-            }
-        };
+            let result = match network_module.scan_wireless_network().await {
+                Ok(scan_results) => scan_results,
+                Err(e) => {
+                    return Err(handle_network_error(e));
+                }
+            };
 
-        Ok(ScanWirelessNetworkListResponse {
-            networks: result
-                .iter()
-                .map(|network| ScanWirelessNetworkResponse {
-                    name: network.name.clone(),
-                    signal: network.signal as i32,
-                    frequency: network.frequency.clone(),
-                    mac: network.mac.clone(),
-                    flags: network.flags.clone(),
-                })
-                .collect::<Vec<ScanWirelessNetworkResponse>>(),
-        })
+            Ok(ScanWirelessNetworkListResponse {
+                networks: result
+                    .iter()
+                    .map(|network| ScanWirelessNetworkResponse {
+                        name: network.name.clone(),
+                        signal: network.signal as i32,
+                        frequency: network.frequency.clone(),
+                        mac: network.mac.clone(),
+                        flags: network.flags.clone(),
+                    })
+                    .collect::<Vec<ScanWirelessNetworkResponse>>(),
+            })
+        } else {
+            Err(zbus::fdo::Error::Failed(
+                "NotAuthorizedToScanWirelessNetworks".to_string(),
+            ))
+        }
     }
 
     pub async fn add_wireless_network(
@@ -526,4 +535,20 @@ impl NetworkBusInterface {
                 .collect::<Vec<NetworkResultResponse>>(),
         })
     }
+}
+
+async fn authorized() -> Result<bool, Box<dyn std::error::Error>> {
+    let connection = Connection::system().await?;
+    let proxy = AuthorityProxy::new(&connection).await?;
+    let subject = Subject::new_for_owner(std::process::id(), None, None)?;
+    let result = proxy
+        .check_authorization(
+            &subject,
+            "Mechanix.Services.Network",
+            &std::collections::HashMap::new(),
+            CheckAuthorizationFlags::AllowUserInteraction.into(),
+            "",
+        )
+        .await?;
+    Ok(result.is_authorized)
 }
