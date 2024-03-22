@@ -11,22 +11,38 @@ pub struct BaseConfig {
 pub struct Interfaces {
     pub display: Display,
     pub battery: Battery,
+    pub network: Network,
+    pub cpu: Cpu,
 }
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Display {
     pub device: String,
+    pub error: Option<bool>
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Battery {
     pub device: String,
+    pub error: Option<bool>
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct Network {
+    pub device: String,
+    pub error: Option<bool>
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct Cpu {
+    pub device: String,
+    pub error: Option<bool>
 }
 
 
 //write a function to parse the yaml file
 pub fn parse_yaml() -> Result<BaseConfig, Box<dyn std::error::Error>> {
     //read the yaml file
-    let mut file = File::open("./Confing.yml").expect("Failed to open file");
+    let mut file = File::open("./Config.yml").expect("Failed to open file");
     let mut contents = String::new();
     file.read_to_string(&mut contents).expect("Failed to read file");
 

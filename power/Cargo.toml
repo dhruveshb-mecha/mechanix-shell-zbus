@@ -15,3 +15,9 @@ homepage.workspace = true
 zbus = { version = "4.1.2", features = ["tokio"] }
 mecha_battery_ctl = "0.1.0"
 utils = { path = "../utils" }
+anyhow = "1.0.80"
+rand = "0.8.5"
+
+[features]
+default = ["mock"]
+mock = []
