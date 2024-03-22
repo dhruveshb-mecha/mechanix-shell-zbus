@@ -3,32 +3,28 @@ use zbus::{
     zvariant::{DeserializeDict, SerializeDict, Type},
 };
 
-pub struct DisplayInfoBusInterface {}
+pub struct DeviceInfoBusInterface {}
 
 #[derive(DeserializeDict, SerializeDict, Type)]
 #[zvariant(signature = "a{sv}")]
-pub struct DistroInfo {
-    pub id: String,
-    pub name: String,
-    pub version: String,
-    pub version_id: String,
-    pub pretty_name: String,
-    pub distro_codename: String,
-    pub mac_address: String,
+pub struct DeviceInfo {
+    pub os_name: String,
+    pub os_version: String,
+    pub serial_number: String,
+    pub wifi_mac_address: String,
+    pub ethernet_mac_address: String,
 }
 
 #[interface(name = "Mechanix.Services.DeviceInfo")]
-impl DisplayInfoBusInterface {
-    pub async fn get_distro_info(&self) -> Result<DistroInfo, zbus::fdo::Error> {
+impl DeviceInfoBusInterface {
+    pub async fn get_distro_info(&self) -> Result<DeviceInfo, zbus::fdo::Error> {
         //get distro info
-        let distro_info = DistroInfo {
-            id: "1".to_string(),
-            name: "Ubuntu".to_string(),
-            version: "20.04".to_string(),
-            version_id: "20.04".to_string(),
-            pretty_name: "Ubuntu 20.04.2 LTS".to_string(),
-            distro_codename: "focal".to_string(),
-            mac_address: "00:00:00:00:00:00".to_string(),
+        let distro_info = DeviceInfo {
+            os_name: "Ubuntu".to_string(),
+            os_version: "20.04".to_string(),
+            serial_number: "1234 4654 456".to_string(),
+            wifi_mac_address: "00:00:00:00:00:00".to_string(),
+            ethernet_mac_address: "00:00:00:00:00:00".to_string(),
         };
 
         Ok(distro_info)

@@ -302,4 +302,17 @@ impl PowerBusInterface {
             ));
         }
     }
+
+    //todo: implement the display interface methods to get timeout
+    pub async fn get_screen_timeout(&self) -> u32 {
+        println!("get screen timeout");
+        0
+    }
+
+    //todo: implement the display interface methods to set timeout
+    pub async fn set_screen_timeout(&self, timeout: u32) -> u32 {
+        println!("get screen timeout");
+        10
+    }
+
 }
